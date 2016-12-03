@@ -2,6 +2,7 @@ var app = require("express")();
 var bodyParser = require('body-parser');
 var http = require('http').Server(app);
 var io = require("socket.io")(http);
+var cors = require('cors');
 
 var userModel = require('./model/user');
 userModel = new userModel();
@@ -10,18 +11,24 @@ app.use(require("express").static('data'));
 app.use(bodyParser.urlencoded({
     extended: true
 }));
+
 app.use(bodyParser.json());
-app.use(function (req, res, next) {
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+
+app.use(cors());
+
+var jwt = require('./lib/jwtauth');
+app.use('/users-list',jwt.verifyToken());
+
+//app.use(function (req, res, next) {
+//    res.header("Access-Control-Allow-Origin", "*");
+////    res.header("Access-Control-Allow-Headers", "Origin, Authorization, X-Requested-With, Content-Type, Accept");
 //    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With, *');
-    
-    next();
-});
+//    
+//    next();
+//});
 
 app.get("/", function (req, res) {
     res.json("Welcome messenger server");
-//    res.sendFile(__dirname + '/index.html');
 });
 
 app.get("/users-list", function (req, res) {
@@ -37,7 +44,10 @@ app.post("/login", function (req, res) {
     var user = userModel.findByUsername(username, password);
     
     if(user){
-        res.json({data:user});
+        
+        var token = jwt.createToken(user)
+        
+        res.json({data: user, token: token});
     }else{
         res.json({error:1, msg:'Invalid username or password'});
     }
